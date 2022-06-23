@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FShell.App", "FShell.App\FShell.App.fsproj", "{B1A30090-5A17-4DF0-AD1B-FD86E8A81704}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FShell.Core", "FShell.Core\FShell.Core.fsproj", "{6FC7B1A0-5694-4C0C-A761-D29F69454D7D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B1A30090-5A17-4DF0-AD1B-FD86E8A81704}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1A30090-5A17-4DF0-AD1B-FD86E8A81704}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1A30090-5A17-4DF0-AD1B-FD86E8A81704}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1A30090-5A17-4DF0-AD1B-FD86E8A81704}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6FC7B1A0-5694-4C0C-A761-D29F69454D7D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6FC7B1A0-5694-4C0C-A761-D29F69454D7D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6FC7B1A0-5694-4C0C-A761-D29F69454D7D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6FC7B1A0-5694-4C0C-A761-D29F69454D7D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
