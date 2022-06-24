@@ -8,9 +8,9 @@ let actionHandler (str: string) =
     printfn $"{str}"
 
 let cfg =
-    InputControl.Common.Configuration.Create(promptHandler, actionHandler)
+    InputController.Common.Configuration.Create(promptHandler, actionHandler)
 
-InputControl.start cfg
+InputController.start cfg
 
 printfn "Example 1"
 
