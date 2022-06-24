@@ -118,6 +118,9 @@ module InputController =
                     LeftBuffer = []
                     RightBuffer = []
                     History =
+                        // Attempt to add the newHistoryItem to the state history.
+                        // If the item is the same as the first item in the history, skip it.
+                        // This gives a similar experience to other shells.
                         newHistoryItem
                         |> Option.map (fun nhi ->
                             match state.History.IsEmpty with
@@ -204,7 +207,6 @@ module InputController =
                 | Some i when i = 0 -> Some <| state.LoadSavedInput()
                 | Some i -> Some <| state.LoadHistoryItem(i - 1, false)
                 | None -> None
-
 
     [<AutoOpen>]
     module private Actions =
