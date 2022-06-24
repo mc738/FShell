@@ -1,5 +1,7 @@
 ﻿open FShell.Core
 
+InputControl.start ()
+
 printfn "Example 1"
 [ CoreUtils.cat "C:\\ProjectData\\Test\\test.txt"
   CoreUtils.grep "^Hello" ]

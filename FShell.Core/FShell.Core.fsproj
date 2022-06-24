@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="Extensions.fs" />
         <Compile Include="Pipes.fs" />
+        <Compile Include="InputControl.fs" />
         <Compile Include="CoreUtils.fs" />
     </ItemGroup>
 
