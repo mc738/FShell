@@ -1,5 +1,6 @@
 ﻿namespace FShell.Core
 
+/// The InputController module is responsible for handling user input.
 module InputController =
 
     open System
