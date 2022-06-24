@@ -46,68 +46,7 @@ module InputController =
                   History = []
                   HistoryIndex = None
                   SavedInput = None }
-
-            /// Move back on position.
-            member state.MoveBack1() =
-                match (state.CurrentPosition <> 0) with
-                | true ->
-                    { state with
-                        CurrentPosition = state.CurrentPosition - 1
-                        LeftBuffer = state.LeftBuffer.[0 .. (state.LeftBuffer.Length - 2)]
-                        RightBuffer =
-                            [ state.LeftBuffer.[(state.LeftBuffer.Length - 1)] ]
-                            @ state.RightBuffer
-                        CurrentLine = state.CurrentLine }
-                    |> Some
-                | false -> None
-
-            /// Move forwards 1 position.
-            member state.MoveForwards1() =
-                match state.CurrentPosition < state.MaxPosition with
-                | true ->
-                    let newLeft, newRight =
-                        match state.RightBuffer.IsEmpty with
-                        | true -> state.LeftBuffer, []
-                        | false -> state.LeftBuffer @ [ state.RightBuffer.Head ], state.RightBuffer.Tail
-
-                    { state with
-                        CurrentPosition = state.CurrentPosition + 1
-                        LeftBuffer = newLeft
-                        RightBuffer = newRight
-                        CurrentLine = state.CurrentLine }
-                    |> Some
-                | false -> None
-
-            /// Remove the last character in the left buffer.
-            member state.Backspace1() =
-                match state.CurrentPosition > 0 with
-                | true ->
-                    { state with
-                        CurrentPosition = state.CurrentPosition - 1
-                        MaxPosition = state.MaxPosition - 1
-                        LeftBuffer = state.LeftBuffer.[0 .. (state.LeftBuffer.Length - 2)]
-                        CurrentLine = state.CurrentLine }
-                    |> Some
-                | false -> None
-
-            /// Remove the first character from the right buffer.
-            member state.Delete1() =
-                match state.CurrentPosition < state.MaxPosition with
-                | true ->
-                    { state with
-                        MaxPosition = state.MaxPosition - 1
-                        RightBuffer = state.RightBuffer.Tail
-                        CurrentLine = state.CurrentLine }
-                    |> Some
-                | false -> None
-
-            /// A a new character to the end of the left buffer.
-            member state.AddChar(c: Char) =
-                { state with
-                    CurrentPosition = state.CurrentPosition + 1
-                    LeftBuffer = state.LeftBuffer @ [ c ]
-                    MaxPosition = state.MaxPosition + 1 }
-
+                            
             /// Get the current left and right buffers as a string.
             member state.GetString() =
                 String(
@@ -127,8 +66,48 @@ module InputController =
             /// Get the right buffer as string.
             member state.GetRightBufferString() =
                 String(state.RightBuffer |> Array.ofList)
+                            
+            /// A a new character to the end of the left buffer.
+            /// A new state will always be returned.
+            member state.AddChar(c: Char) =
+                { state with
+                    CurrentPosition = state.CurrentPosition + 1
+                    LeftBuffer = state.LeftBuffer @ [ c ]
+                    MaxPosition = state.MaxPosition + 1 }
+                
+            /// Load item at an index from the history.
+            /// A new state will always be returned.
+            member state.LoadHistoryItem(index: int, saveInput: bool) =
+                let item = state.History.[index]
+
+                { state with
+                    CurrentPosition = item.Length
+                    MaxPosition = item.Length
+                    LeftBuffer = item |> List.ofSeq
+                    RightBuffer = []
+                    HistoryIndex = Some index
+                    SavedInput =
+                        match saveInput with
+                        | true -> Some <| state.GetString()
+                        | false -> state.SavedInput }
+                
+            /// Load the saved input.
+            /// A new state will always be returned.
+            member state.LoadSavedInput() =
+                let savedInput =
+                    state.SavedInput
+                    |> Option.defaultValue String.Empty
+
+                { state with
+                    CurrentPosition = savedInput.Length
+                    MaxPosition = savedInput.Length
+                    LeftBuffer = savedInput |> List.ofSeq
+                    RightBuffer = []
+                    HistoryIndex = None
+                    SavedInput = None }
 
             /// Move to the next (based on offset) line and optionally add an item to the history.
+            /// A new state will always be returned.
             member state.NextLine(offset: int, newHistoryItem: string option) =
 
                 { state with
@@ -150,43 +129,76 @@ module InputController =
                     HistoryIndex = None
                     SavedInput = None }
 
-            /// Load item at an index from the history.
-            member state.LoadHistoryItem(index: int, saveInput: bool) =
-                let item = state.History.[index]
+            /// Attempt to move back 1 position.
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryMoveBack1() =
+                match (state.CurrentPosition <> 0) with
+                | true ->
+                    { state with
+                        CurrentPosition = state.CurrentPosition - 1
+                        LeftBuffer = state.LeftBuffer.[0 .. (state.LeftBuffer.Length - 2)]
+                        RightBuffer =
+                            [ state.LeftBuffer.[(state.LeftBuffer.Length - 1)] ]
+                            @ state.RightBuffer
+                        CurrentLine = state.CurrentLine }
+                    |> Some
+                | false -> None
 
-                { state with
-                    CurrentPosition = item.Length
-                    MaxPosition = item.Length
-                    LeftBuffer = item |> List.ofSeq
-                    RightBuffer = []
-                    HistoryIndex = Some index
-                    SavedInput =
-                        match saveInput with
-                        | true -> Some <| state.GetString()
-                        | false -> state.SavedInput }
+            /// Move forwards 1 position.
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryMoveForwards1() =
+                match state.CurrentPosition < state.MaxPosition with
+                | true ->
+                    let newLeft, newRight =
+                        match state.RightBuffer.IsEmpty with
+                        | true -> state.LeftBuffer, []
+                        | false -> state.LeftBuffer @ [ state.RightBuffer.Head ], state.RightBuffer.Tail
 
-            member state.NextHistoryItem() =
+                    { state with
+                        CurrentPosition = state.CurrentPosition + 1
+                        LeftBuffer = newLeft
+                        RightBuffer = newRight
+                        CurrentLine = state.CurrentLine }
+                    |> Some
+                | false -> None
+
+            /// Attempt to remove the last character in the left buffer.
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryBackspace1() =
+                match state.CurrentPosition > 0 with
+                | true ->
+                    { state with
+                        CurrentPosition = state.CurrentPosition - 1
+                        MaxPosition = state.MaxPosition - 1
+                        LeftBuffer = state.LeftBuffer.[0 .. (state.LeftBuffer.Length - 2)]
+                        CurrentLine = state.CurrentLine }
+                    |> Some
+                | false -> None
+
+            /// Attempt to remove the first character from the right buffer.
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryDelete1() =
+                match state.CurrentPosition < state.MaxPosition with
+                | true ->
+                    { state with
+                        MaxPosition = state.MaxPosition - 1
+                        RightBuffer = state.RightBuffer.Tail
+                        CurrentLine = state.CurrentLine }
+                    |> Some
+                | false -> None
+
+            /// Attempt to load the next item from the state's history
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryNextHistoryItem() =
                 match state.History.IsEmpty, state.HistoryIndex with
                 | true, _ -> None
                 | false, None -> Some <| state.LoadHistoryItem(0, true)
                 | false, Some i when i < state.History.Length - 1 -> Some <| state.LoadHistoryItem(i + 1, false)
                 | false, Some _ -> None
 
-            /// Load the saved input.
-            member state.LoadSavedInput() =
-                let savedInput =
-                    state.SavedInput
-                    |> Option.defaultValue String.Empty
-
-                { state with
-                    CurrentPosition = savedInput.Length
-                    MaxPosition = savedInput.Length
-                    LeftBuffer = savedInput |> List.ofSeq
-                    RightBuffer = []
-                    HistoryIndex = None
-                    SavedInput = None }
-
-            member state.PreviousHistoryItem() =
+            /// Attempt to love the previous item from history, or the saved input if already at the first index (0).
+            /// If successful a new state will be returned, if not None will be.
+            member state.TryPreviousHistoryItem() =
                 match state.HistoryIndex with
                 | Some i when i = 0 -> Some <| state.LoadSavedInput()
                 | Some i -> Some <| state.LoadHistoryItem(i - 1, false)
@@ -230,42 +242,54 @@ module InputController =
     [<RequireQualifiedAccess>]
     module KeyHandlers =
 
-        /// Handle the left arrow (i.e. attempt to move back one).
+        /// Handle the left arrow key (i.e. attempt to move back one).
+        /// If unsuccessful this is a no-op.
         let leftArrow (state: State) =
-            state.MoveBack1() |> Option.defaultValue state
+            state.TryMoveBack1() |> Option.defaultValue state
 
-        /// Handle the right arrow (i.e. attempt to move forwards one).
+        /// Handle the right arrow key (i.e. attempt to move forwards one).
+        /// If unsuccessful this is a no-op.
         let rightArrow (state: State) =
-            state.MoveForwards1() |> Option.defaultValue state
+            state.TryMoveForwards1() |> Option.defaultValue state
 
+        /// Handle the up arrow key (i.e. load the next item from the state's history).
+        /// If unsuccessful this is a no-op.
         let upArrow (prompt: string) (state: State) =
-            match state.NextHistoryItem() with
+            match state.TryNextHistoryItem() with
             | Some newState ->
                 updateLine prompt newState
                 newState
             | None -> state
 
+        /// Handle the down arrow key (i.e. load last time from the state's history).
+        /// If unsuccessful this is a no-op.
         let downArrow (prompt: string) (state: State) =
-            match state.PreviousHistoryItem() with
+            match state.TryPreviousHistoryItem() with
             | Some newState ->
                 updateLine prompt newState
                 newState
             | None -> state
 
+        /// Handle the backspace (i.e. remove one behind current position).
+        /// If unsuccessful this is a no-op.
         let backspace (prompt: string) (state: State) =
-            match state.Backspace1() with
+            match state.TryBackspace1() with
             | Some newState ->
                 updateLine prompt newState
                 newState
             | None -> state
 
+        /// Handle the delete key (i.e. remove one forwards from current position).
+        /// If unsuccessful this is a no-op.
         let delete (prompt: string) (state: State) =
-            match state.Delete1() with
+            match state.TryDelete1() with
             | Some newState ->
                 updateLine prompt newState
                 newState
             | None -> state
 
+        /// Handle any other key (i.e. add to the state).
+        /// This always creates a new state.
         let otherKey (prompt: string) (c: char) (state: State) =
             let newState = state.AddChar c
             updateLine prompt newState
@@ -276,6 +300,8 @@ module InputController =
 
         // Set the position to make sure everything displays correctly.
         setPosition prompt state
+        
+        // Wait for the user to press a key.
         let input = Console.ReadKey(true)
 
         match input.Key with
@@ -288,7 +314,8 @@ module InputController =
         | ConsoleKey.Delete -> handleInput (prompt, KeyHandlers.delete prompt state)
         | _ -> handleInput (prompt, KeyHandlers.otherKey prompt input.KeyChar state)
 
-    let rec run (cfg: Configuration, state: State) =
+    /// Wait for the user to input a line and then handle it.
+    let rec handleLine (cfg: Configuration, state: State) =
         let prompt = cfg.GetPrompt()
 
         writePrompt prompt state
@@ -303,10 +330,11 @@ module InputController =
                 cfg.ExecuteAction v
                 state.NextLine(2, Some v)
 
-        run (cfg, newState)
+        handleLine (cfg, newState)
 
+    /// Start the input controller.
     let start (cfg: Configuration) =
 
         Console.Clear()
         let initState = State.Create()
-        run (cfg, initState)
+        handleLine (cfg, initState)
