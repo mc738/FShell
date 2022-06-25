@@ -43,13 +43,19 @@ module Extensions =
             
     type String with
     
+        /// Check if an index in a string is in bounds.
         member s.InBounds(i: int) = i >= 0 && i < s.Length
         
+        /// Try and get a character from a string by index (if in bounds)
         member s.TryGetChar(i) =
             match s.InBounds i with
             | true -> s.[i] |> Some
             | false -> None
             
+        /// Read from the string until one of a selection of characters are found.
+        /// Supports an optional delimiter character.
+        /// If present, will only return the next applicable character index that is not delimited.
+        /// For example in single or double quotes.
         member s.ReadUntilChars(start: int, chars: char list, delimiter: char option) =
             let rec read(i: int, delimited: bool) =
                 match s.TryGetChar i, delimiter with
@@ -69,5 +75,6 @@ module Extensions =
             
             read(start, false)
             
+        /// Get a substring starting at startIndex and ending at endIndex.
         member s.GetSubString(startIndex: int, endIndex: int) =
             s.[startIndex..endIndex]

@@ -6,6 +6,7 @@ module DisplayHandler =
     open System
     open Parsing
 
+    /// Print a collection of tokens to the console with syntax highlighting.
     let print (values: Token list) =
       values
       |> List.iter (fun t ->
