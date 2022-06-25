@@ -37,6 +37,12 @@ module Parsing =
 
         let chars = [ ' '; '|'; '>'; '"'; ''' ]
 
+        let createNewAcc (startIndex: int) (endIndex: int) (token: Token) (isCommand: bool) (acc: Token list) =
+            acc
+            @ [ if endIndex > startIndex then
+                    Token.Create(value.GetSubString(startIndex, endIndex - 1), startIndex, isCommand)
+                token ]
+
         let rec handle (acc: Token list, i: int, delimiter: char option, isCommand: bool) =
             let (endIndex, c) =
                 value.ReadUntilChars(i, chars, delimiter)
@@ -44,13 +50,17 @@ module Parsing =
             match c with
             | Some c when c = ' ' ->
 
-                let newAcc =
+                // A bit convoluted. Essentially, is there is a prior substring (i.e. command, arg etc) and
+                // isCommand is not true, pass false. If there is no prior substring then don't change is command.
+                // This is ensure white spaces dont break the output.
+                handle (
                     acc
-                    @ [ if endIndex > i then
-                            Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                        Token.Create(" ", endIndex, isCommand) ]
-
-                handle (newAcc, endIndex + 1, None, (not (endIndex > i) || not isCommand) && isCommand <> false)
+                    |> createNewAcc i endIndex (Token.Create(" ", endIndex, isCommand)) isCommand,
+                    endIndex + 1,
+                    None,
+                    (not (endIndex > i) || not isCommand)
+                    && isCommand <> false
+                )
             | Some c when c = '|' ->
 
                 let token, newEnd =
@@ -59,16 +69,9 @@ module Parsing =
                     | Some _
                     | None -> Token.Create("|", endIndex, isCommand), endIndex + 1
 
-                let newAcc =
-                    acc
-                    @ [ match endIndex > i with
-                        | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                        | false -> ()
-                        token ]
-
-                handle (newAcc, newEnd, None, true)
+                handle (acc |> createNewAcc i endIndex token isCommand, newEnd, None, true)
             | Some c when c = '>' ->
-                let token, i =
+                let token, newEnd =
                     match value.TryGetChar(endIndex + 1), value.TryGetChar(endIndex + 2) with
                     | Some c1, Some c2 when c1 = '&' && c2 = '1' ->
                         Token.Create(">&1", endIndex, isCommand), endIndex + 3
@@ -77,55 +80,30 @@ module Parsing =
                     | Some _, _
                     | None, _ -> Token.Create(">", endIndex, isCommand), endIndex + 1
 
-                let newAcc =
-                    acc
-                    @ [ match endIndex > i with
-                        | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                        | false -> ()
-                        token ]
-
-                handle (newAcc, i, None, true)
+                handle (acc |> createNewAcc i endIndex token isCommand, newEnd, None, true)
             | Some c when c = '"' ->
                 let (newEnd, newC) =
                     value.ReadUntilChars(endIndex + 1, [ '"' ], None)
 
-                let newAcc =
+                let token =
                     match newC with
-                    | Some _ ->
-                        acc
-                        @ [ match endIndex > i with
-                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                            | false -> ()
-                            Token.Create(value.GetSubString(endIndex, newEnd), i, isCommand) ]
-                    | None ->
-                        acc
-                        @ [ match endIndex > i with
-                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                            | false -> ()
-                            Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand) ]
+                    | Some _ -> Token.Create(value.GetSubString(endIndex, newEnd), i, isCommand)
+                    | None -> Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand)
 
-                handle (newAcc, newEnd + 1, None, false)
+                handle (acc |> createNewAcc i endIndex token isCommand, newEnd + 1, None, false)
             | Some c when c = ''' ->
                 let (newEnd, newC) =
                     value.ReadUntilChars(endIndex, [ ''' ], None)
 
-                let newAcc =
+                let token =
                     match newC with
-                    | Some _ ->
-                        acc
-                        @ [ match endIndex > i with
-                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                            | false -> ()
-                            Token.Create(value.GetSubString(endIndex, newEnd), endIndex, isCommand) ]
-                    | None ->
-                        acc
-                        @ [ match endIndex > i with
-                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
-                            | false -> ()
-                            Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand) ]
+                    | Some _ -> Token.Create(value.GetSubString(endIndex, newEnd), i, isCommand)
+                    | None -> Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand)
 
-                handle (newAcc, newEnd + 1, None, false)
-            | Some c -> failwith $"Error - unknown character `{c}`"
+                handle (acc |> createNewAcc i endIndex token isCommand, newEnd + 1, None, false)
+            | Some c ->
+                // This should not be hit. Throw and exception for now just to report on anytime it might be.
+                failwith $"Error - unknown character `{c}`"
             | None ->
                 acc
                 @ [ Token.Create(value.GetSubString(i, value.Length - 1), i, isCommand) ]
