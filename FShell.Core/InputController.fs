@@ -232,8 +232,11 @@ module InputController =
             clearCurrentLine prompt ()
             setStartOfLine prompt state
 
-            Console.Write(state.GetLeftBufferString())
-            Console.Write(state.GetRightBufferString())
+            state.GetString()
+            |> Parsing.parse
+            |> DisplayHandler.print
+            //Console.Write(state.GetLeftBufferString())
+            //Console.Write(state.GetRightBufferString())
             Console.CursorVisible <- true
 
         /// Write the prompt.

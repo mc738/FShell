@@ -40,3 +40,34 @@ module Extensions =
             let len = int ms.Length
             ms.Write(Array.zeroCreate len, 0, len)
             ms.Reset()
+            
+    type String with
+    
+        member s.InBounds(i: int) = i >= 0 && i < s.Length
+        
+        member s.TryGetChar(i) =
+            match s.InBounds i with
+            | true -> s.[i] |> Some
+            | false -> None
+            
+        member s.ReadUntilChars(start: int, chars: char list, delimiter: char option) =
+            let rec read(i: int, delimited: bool) =
+                match s.TryGetChar i, delimiter with
+                | Some c, Some delimiter ->
+                    match c = delimiter, delimited, chars |> List.contains c with
+                    | true, true, _ -> read (i + 1, false)
+                    | true, false, _ -> read (i + 1, true)
+                    | false, _, true -> (i, Some c)
+                    | false, _, false -> read (i + 1, delimited)
+                | Some c, None ->
+                    match chars |> List.contains c with
+                    | true -> (i, Some c)
+                    | false -> read (i + 1, false)
+                | None, _ ->
+                    // Read to end and out of bounds, so return the last value.
+                    (i, None)
+            
+            read(start, false)
+            
+        member s.GetSubString(startIndex: int, endIndex: int) =
+            s.[startIndex..endIndex]
