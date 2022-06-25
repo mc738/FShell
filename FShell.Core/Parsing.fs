@@ -33,16 +33,20 @@ module Parsing =
               Position = position
               Value = value }
 
+    /// Run the parser and return a collection of tokens.
     let run (value: string) =
 
         let chars = [ ' '; '|'; '>'; '"'; ''' ]
 
+        /// Create a new accumulator by checking if there is a previous substring before the current position.
+        /// If so add that and the current token. If not just add the current token.
         let createNewAcc (startIndex: int) (endIndex: int) (token: Token) (isCommand: bool) (acc: Token list) =
             acc
             @ [ if endIndex > startIndex then
                     Token.Create(value.GetSubString(startIndex, endIndex - 1), startIndex, isCommand)
                 token ]
 
+        /// A recursive function to handle parsing.
         let rec handle (acc: Token list, i: int, delimiter: char option, isCommand: bool) =
             let (endIndex, c) =
                 value.ReadUntilChars(i, chars, delimiter)
