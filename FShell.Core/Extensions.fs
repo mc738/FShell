@@ -56,7 +56,7 @@ module Extensions =
         /// Supports an optional delimiter character.
         /// If present, will only return the next applicable character index that is not delimited.
         /// For example in single or double quotes.
-        member s.ReadUntilChars(start: int, chars: char list, delimiter: char option) =
+        member s.ReadUntilChar(start: int, chars: char list, delimiter: char option) =
             let rec read(i: int, delimited: bool) =
                 match s.TryGetChar i, delimiter with
                 | Some c, Some delimiter ->

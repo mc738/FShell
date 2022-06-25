@@ -103,7 +103,7 @@ module Parsing =
         /// A recursive function to handle parsing.
         let rec handle (acc: Token list, i: int, delimiter: char option, isCommand: bool) =
             let (endIndex, c) =
-                value.ReadUntilChars(i, chars, delimiter)
+                value.ReadUntilChar(i, chars, delimiter)
 
             match c with
             // Handle whitespace.
@@ -143,7 +143,7 @@ module Parsing =
             // Handle delimited strings (`"Some value"` or `'Some value'`).
             | Some c when c = '"' || c = ''' ->
                 let (newEnd, newC) =
-                    value.ReadUntilChars(endIndex + 1, [ c ], None)
+                    value.ReadUntilChar(endIndex + 1, [ c ], None)
 
                 let token =
                     match newC with
