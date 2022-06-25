@@ -47,7 +47,7 @@ module InputController =
                   History = []
                   HistoryIndex = None
                   SavedInput = None }
-                            
+
             /// Get the current left and right buffers as a string.
             member state.GetString() =
                 String(
@@ -67,7 +67,7 @@ module InputController =
             /// Get the right buffer as string.
             member state.GetRightBufferString() =
                 String(state.RightBuffer |> Array.ofList)
-                            
+
             /// A a new character to the end of the left buffer.
             /// A new state will always be returned.
             member state.AddChar(c: Char) =
@@ -75,7 +75,7 @@ module InputController =
                     CurrentPosition = state.CurrentPosition + 1
                     LeftBuffer = state.LeftBuffer @ [ c ]
                     MaxPosition = state.MaxPosition + 1 }
-                
+
             /// Load item at an index from the history.
             /// A new state will always be returned.
             member state.LoadHistoryItem(index: int, saveInput: bool) =
@@ -91,7 +91,7 @@ module InputController =
                         match saveInput with
                         | true -> Some <| state.GetString()
                         | false -> state.SavedInput }
-                
+
             /// Load the saved input.
             /// A new state will always be returned.
             member state.LoadSavedInput() =
@@ -235,8 +235,7 @@ module InputController =
             state.GetString()
             |> Parsing.run
             |> DisplayHandler.print
-            //Console.Write(state.GetLeftBufferString())
-            //Console.Write(state.GetRightBufferString())
+
             Console.CursorVisible <- true
 
         /// Write the prompt.
@@ -256,7 +255,8 @@ module InputController =
         /// Handle the right arrow key (i.e. attempt to move forwards one).
         /// If unsuccessful this is a no-op.
         let rightArrow (state: State) =
-            state.TryMoveForwards1() |> Option.defaultValue state
+            state.TryMoveForwards1()
+            |> Option.defaultValue state
 
         /// Handle the up arrow key (i.e. load the next item from the state's history).
         /// If unsuccessful this is a no-op.
@@ -306,7 +306,7 @@ module InputController =
 
         // Set the position to make sure everything displays correctly.
         setPosition prompt state
-        
+
         // Wait for the user to press a key.
         let input = Console.ReadKey(true)
 
