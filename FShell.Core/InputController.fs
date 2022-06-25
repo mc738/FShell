@@ -233,7 +233,7 @@ module InputController =
             setStartOfLine prompt state
 
             state.GetString()
-            |> Parsing.parse
+            |> Parsing.run
             |> DisplayHandler.print
             //Console.Write(state.GetLeftBufferString())
             //Console.Write(state.GetRightBufferString())

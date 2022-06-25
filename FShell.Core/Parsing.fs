@@ -1,55 +1,43 @@
 ﻿namespace FShell.Core
 
-
 module Parsing =
 
-    type Token =
-        | Command of Value: string
-        | Arg of ArgType
-        | Operator of OperatorType
-        | Text of Value: string
+    let operators =
+        [ "|"; "|>"; ">"; ">&1"; ">&2" ]
+
+    type TokenType =
+        | Command
+        | ArgName
+        | ArgValue
+        | Operator
+        | DelimitedString
+        | Text
         | Whitespace
 
-    and [<RequireQualifiedAccess>] ArgType =
-        | Anonymous of Value: ArgValue
-        | Named of Name: string * Value: ArgValue
+    type Token =
+        { Type: TokenType
+          Position: int
+          Value: string }
 
-    and ArgValue =
-        | Plain of Value: string
-        | Delimited of Value: string * Delimiter: char
+        static member Create(value: string, position: int, isCommand: bool) =
+            let tt =
+                match operators |> List.contains value, isCommand with
+                | true, _ -> TokenType.Operator
+                | false, true -> TokenType.Command
+                | false, false when value.StartsWith('-') -> TokenType.ArgName
+                | false, false when value.StartsWith('"') || value.StartsWith(''') -> TokenType.DelimitedString
+                | false, false when value = " " -> TokenType.Whitespace
+                | false, false -> TokenType.ArgValue
 
-    and [<RequireQualifiedAccess>] OperatorType =
-        | Pipe
-        | FSharpPipe
-        | Redirect of RedirectTo option
+            { Type = tt
+              Position = position
+              Value = value }
 
-        member ot.GetString() =
-            match ot with
-            | Pipe -> "|"
-            | FSharpPipe -> "|>"
-            | Redirect rt ->
-                match rt with
-                | Some rtt -> $">{rtt.GetString()}"
-                | None -> ">"
-
-    and [<RequireQualifiedAccess>] RedirectTo =
-        | StdOut
-        | StdErr
-
-        member rt.GetString() =
-            match rt with
-            | StdOut -> "&1"
-            | StdErr -> "$2"
-
-    module Internal =
-
-        ()
-
-    let parse (value: string) =
+    let run (value: string) =
 
         let chars = [ ' '; '|'; '>'; '"'; ''' ]
 
-        let rec handle (acc: string list, i: int, delimiter: char option) =
+        let rec handle (acc: Token list, i: int, delimiter: char option, isCommand: bool) =
             let (endIndex, c) =
                 value.ReadUntilChars(i, chars, delimiter)
 
@@ -59,42 +47,44 @@ module Parsing =
                 let newAcc =
                     acc
                     @ [ if endIndex > i then
-                            value.GetSubString(i, endIndex - 1)
-                        " " ]
+                            Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
+                        Token.Create(" ", endIndex, isCommand) ]
 
-                handle (newAcc, endIndex + 1, None)
+                handle (newAcc, endIndex + 1, None, (not (endIndex > i) || not isCommand) && isCommand <> false)
             | Some c when c = '|' ->
 
                 let token, newEnd =
                     match value.TryGetChar(endIndex + 1) with
-                    | Some c when c = '>' -> "|>", endIndex + 2
+                    | Some c when c = '>' -> Token.Create("|>", endIndex, isCommand), endIndex + 2
                     | Some _
-                    | None -> "|", endIndex + 1
+                    | None -> Token.Create("|", endIndex, isCommand), endIndex + 1
 
                 let newAcc =
                     acc
                     @ [ match endIndex > i with
-                        | true -> value.GetSubString(i, endIndex - 1)
+                        | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                         | false -> ()
                         token ]
 
-                handle (newAcc, newEnd, None)
+                handle (newAcc, newEnd, None, true)
             | Some c when c = '>' ->
                 let token, i =
                     match value.TryGetChar(endIndex + 1), value.TryGetChar(endIndex + 2) with
-                    | Some c1, Some c2 when c1 = '&' && c2 = '1' -> ">&1", endIndex + 3
-                    | Some c1, Some c2 when c1 = '&' && c2 = '2' -> ">&2", endIndex + 3
+                    | Some c1, Some c2 when c1 = '&' && c2 = '1' ->
+                        Token.Create(">&1", endIndex, isCommand), endIndex + 3
+                    | Some c1, Some c2 when c1 = '&' && c2 = '2' ->
+                        Token.Create(">&2", endIndex, isCommand), endIndex + 3
                     | Some _, _
-                    | None, _ -> ">", endIndex + 1
+                    | None, _ -> Token.Create(">", endIndex, isCommand), endIndex + 1
 
                 let newAcc =
                     acc
                     @ [ match endIndex > i with
-                        | true -> value.GetSubString(i, endIndex - 1)
+                        | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                         | false -> ()
                         token ]
 
-                handle (newAcc, i, None)
+                handle (newAcc, i, None, true)
             | Some c when c = '"' ->
                 let (newEnd, newC) =
                     value.ReadUntilChars(endIndex + 1, [ '"' ], None)
@@ -104,17 +94,17 @@ module Parsing =
                     | Some _ ->
                         acc
                         @ [ match endIndex > i with
-                            | true -> value.GetSubString(i, endIndex - 1)
+                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                             | false -> ()
-                            value.GetSubString(endIndex, newEnd) ]
+                            Token.Create(value.GetSubString(endIndex, newEnd), i, isCommand) ]
                     | None ->
                         acc
                         @ [ match endIndex > i with
-                            | true -> value.GetSubString(i, endIndex - 1)
+                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                             | false -> ()
-                            value.GetSubString(endIndex, value.Length - 1) ]
+                            Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand) ]
 
-                handle (newAcc, newEnd + 1, None)
+                handle (newAcc, newEnd + 1, None, false)
             | Some c when c = ''' ->
                 let (newEnd, newC) =
                     value.ReadUntilChars(endIndex, [ ''' ], None)
@@ -124,18 +114,20 @@ module Parsing =
                     | Some _ ->
                         acc
                         @ [ match endIndex > i with
-                            | true -> value.GetSubString(i, endIndex - 1)
+                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                             | false -> ()
-                            value.GetSubString(endIndex, newEnd) ]
+                            Token.Create(value.GetSubString(endIndex, newEnd), endIndex, isCommand) ]
                     | None ->
                         acc
                         @ [ match endIndex > i with
-                            | true -> value.GetSubString(i, endIndex - 1)
+                            | true -> Token.Create(value.GetSubString(i, endIndex - 1), i, isCommand)
                             | false -> ()
-                            value.GetSubString(endIndex, value.Length - 1) ]
+                            Token.Create(value.GetSubString(endIndex, value.Length - 1), endIndex, isCommand) ]
 
-                handle (newAcc, newEnd + 1, None)
+                handle (newAcc, newEnd + 1, None, false)
             | Some c -> failwith $"Error - unknown character `{c}`"
-            | None -> acc @ [ value.GetSubString(i, value.Length - 1) ]
+            | None ->
+                acc
+                @ [ Token.Create(value.GetSubString(i, value.Length - 1), i, isCommand) ]
 
-        handle ([], 0, None)
+        handle ([], 0, None, true)

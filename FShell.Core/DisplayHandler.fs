@@ -4,41 +4,20 @@
 module DisplayHandler =
 
     open System
-        
-    type PrintState =
-    | Command
-    | Arg
+    open Parsing
 
-    let operators = [ "|"; "|>"; ">"; ">&1"; ">&2" ]
-
-    let print (values: string list) =
+    let print (values: Token list) =
       values
-      |> List.fold (fun ps s ->
-          match s, ps with
-          | s, _ when operators |> List.contains s ->
-              Console.ForegroundColor <- ConsoleColor.Magenta
-              printf $"{s}"
-              PrintState.Command
-          | s, _ when s = " " ->
-              printf $"{s}"
-              ps
-          | s, PrintState.Command ->
-              Console.ForegroundColor <- ConsoleColor.Blue
-              printf $"{s}"
-              PrintState.Arg
-          | s, PrintState.Arg when s.StartsWith('-') ->
-              Console.ForegroundColor <- ConsoleColor.Yellow
-              printf $"{s}"
-              PrintState.Arg
-          | s, PrintState.Arg when s.StartsWith ('"') ->
-              Console.ForegroundColor <- ConsoleColor.Green
-              printf $"{s}"
-              PrintState.Arg
-          | s, PrintState.Arg ->
-              Console.ForegroundColor <- ConsoleColor.White
-              printf $"{s}"
-              PrintState.Arg) (PrintState.Command)
+      |> List.iter (fun t ->
+          match t.Type with
+          | TokenType.Command -> Console.ForegroundColor <- ConsoleColor.Blue
+          | TokenType.ArgName -> Console.ForegroundColor <- ConsoleColor.Yellow
+          | TokenType.ArgValue -> Console.ForegroundColor <- ConsoleColor.White
+          | TokenType.Operator -> Console.ForegroundColor <- ConsoleColor.Magenta
+          | TokenType.DelimitedString -> Console.ForegroundColor <- ConsoleColor.Green
+          | TokenType.Text -> Console.ForegroundColor <- ConsoleColor.DarkGray
+          | TokenType.Whitespace -> ()
           
-      |> ignore
+          printf $"{t.Value}")
+      
       Console.ResetColor()
-
