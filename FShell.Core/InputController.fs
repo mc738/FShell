@@ -13,10 +13,10 @@ module InputController =
         type Configuration =
             private
                 { PromptHandler: unit -> string
-                  ActionHandler: string -> unit }
+                  ActionHandler: string -> int }
 
             /// Create a new InputController.Configuration
-            static member Create(promptFn: unit -> string, actionFn: string -> unit) =
+            static member Create(promptFn: unit -> string, actionFn: string -> int) =
                 { PromptHandler = promptFn
                   ActionHandler = actionFn }
 
@@ -333,8 +333,8 @@ module InputController =
             | true -> state.NextLine(1, None)
             | false ->
                 let v = result.GetString()
-                cfg.ExecuteAction v
-                state.NextLine(2, Some v)
+                let offset = cfg.ExecuteAction v
+                state.NextLine(1 + offset, Some v)
 
         handleLine (cfg, newState)
 

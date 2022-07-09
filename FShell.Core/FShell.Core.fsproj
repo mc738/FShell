@@ -12,6 +12,7 @@
         <Compile Include="Pipes.fs" />
         <Compile Include="InputController.fs" />
         <Compile Include="CoreUtils.fs" />
+        <Compile Include="Interpreter.fs" />
     </ItemGroup>
 
 </Project>

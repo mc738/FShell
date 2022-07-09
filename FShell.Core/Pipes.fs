@@ -1,5 +1,7 @@
 ﻿namespace FShell.Core
 
+open System
+
 /// Module containing the basic pipe implementation.
 module Pipes =
 
@@ -53,9 +55,13 @@ module Pipes =
         
         // Output a string to the console if not null or empty.
         let printIfNotEmpty (str: string) =
-            match String.IsNullOrEmpty str with
-            | true -> ()
-            | false -> printfn $"{str}"
+            match  String.IsNullOrWhiteSpace str with
+            | true -> 0
+            | false ->
+                Console.Write(Environment.NewLine)
+                let lines = str.Split(Environment.NewLine)
+                lines |> Array.iter (fun l -> printfn $"{l}")
+                lines.Length
         
         // Run the steps and get the result.
         // If a step fails no steps afterward will be run.
@@ -90,5 +96,6 @@ module Pipes =
             getResult stdOut |> printIfNotEmpty
         | Error _ ->
             Console.ForegroundColor <- ConsoleColor.Red
-            getResult stdErr |> printIfNotEmpty
+            let offset = getResult stdErr |> printIfNotEmpty
             Console.ResetColor()
+            offset

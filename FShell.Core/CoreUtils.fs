@@ -1,5 +1,7 @@
 ﻿namespace FShell.Core
 
+open System.Text.Unicode
+
 /// Module containing CoreUtils. 
 module CoreUtils =
 
@@ -44,20 +46,21 @@ module CoreUtils =
         |> getBytes
         |> Ok
 
-    
     /// A basic implementation of echo.
     let echo str _ =
         getBytes str |> Ok
         
-    
     /// A basic implementation of ls.
     let ls (path: string) _ =
-        [ Directory.EnumerateDirectories(path) |> List.ofSeq
-          Directory.EnumerateFiles(path) |> List.ofSeq ]
-        |> List.concat
-        |> fun s -> String.Join(Environment.NewLine, s)
-        |> getBytes
-        |> Ok
+        try
+            [ Directory.EnumerateDirectories(path) |> List.ofSeq
+              Directory.EnumerateFiles(path) |> List.ofSeq ]
+            |> List.concat
+            |> fun s -> String.Join(Environment.NewLine, s)
+            |> getBytes
+            |> Ok
+        with
+        | exn -> Error (Encoding.UTF8.GetBytes exn.Message)
         
     /// Redirect a result to an error.
     let toError (bytes: byte array) = Error bytes
@@ -68,3 +71,12 @@ module CoreUtils =
     /// A basic implementation of base64
     let base64 (bytes: byte array) =
         Convert.ToBase64String bytes |> getBytes |> Ok
+        
+    let toFile (path: string) (preserve: bool) (bytes: byte array) =
+        try
+            File.WriteAllBytes(path, bytes)
+            match preserve with
+            | true -> Ok bytes
+            | false -> Ok [||]
+        with
+        | exn -> Error (Encoding.UTF8.GetBytes exn.Message)
