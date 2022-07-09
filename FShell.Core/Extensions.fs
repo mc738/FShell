@@ -78,3 +78,12 @@ module Extensions =
         /// Get a substring starting at startIndex and ending at endIndex.
         member s.GetSubString(startIndex: int, endIndex: int) =
             s.[startIndex..endIndex]
+            
+        /// Attempts to remove quotes (' or ") from the start and end of a string.
+        member s.RemoveQuotes() =
+            match (s.StartsWith('"') || s.StartsWith(''')), (s.EndsWith('"') || s.EndsWith(''')) with
+            | true, true -> s.[1..(s.Length - 2)]
+            | true, false -> s.[1..]
+            | false, true -> s.[0..(s.Length - 2)]
+            | false, false -> s
+    

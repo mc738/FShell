@@ -6,58 +6,70 @@ open FShell.Core.Pipes
 
 module Interpreter =
 
+    /// A interpreter command.
     type Command =
         { Name: string
           Args: CommandArg list }
 
+        /// Create a blank command.
         static member Blank() = { Name = ""; Args = [] }
 
+        /// Set the command name.
         member cmd.SetName(name) = { cmd with Name = name }
 
+        /// Add an arg to the command.
         member cmd.AddArg(arg) = { cmd with Args = cmd.Args @ [ arg ] }
 
+        /// Try and get the first arg of the command. If not found will return None.
         member cmd.TryGetFirstArg() = cmd.Args |> List.tryHead
 
+        /// Try and get the first arg value of the command. If not found will return None.
         member cmd.TryGetFirstArgValue() =
             cmd.TryGetFirstArg()
             |> Option.map (fun arg -> arg.Value)
 
+        /// Try and get an arg by index. If not found will return None.
         member cmd.TryGetArg(index: int) = cmd.Args |> List.tryItem index
 
+        /// Try and get an arg value by index. If not found will return None.
         member cmd.TryGetArgValue(index: int) =
             cmd.TryGetArg index
             |> Option.map (fun arg -> arg.Value)
 
+        /// Try and get a arg by name. If not found will return None.
         member cmd.TryGetNamedArg(name: string) =
             cmd.Args
             |> List.tryFind (fun arg -> arg.Name = Some name)
 
+        /// Try and get a arg value by name. If not found will return None.
         member cmd.TryGetNamedArgValue(name: string) =
             cmd.TryGetNamedArg name
             |> Option.map (fun arg -> arg.Value)
 
+        /// Check if an arg exists.
         member cmd.HasArg(name: string) =
             match cmd.TryGetNamedArg name with
             | Some _ -> true
             | None -> false
 
+    /// A argument for a command.
     and CommandArg =
         { Name: string option
           Value: string }
 
+        /// Create a blank argument.
         static member Blank() = { Name = None; Value = "" }
 
+        /// Set the argument name.
         member arg.SetName(name) = { arg with Name = Some name }
 
+        /// Set the argument value.
         member arg.SetValue(value) = { arg with Value = value }
 
+        /// Check if an argument is empty.
         member arg.IsEmpty() = arg.Name = None && arg.Value = ""
 
-    type State =
-        | NewCommand
-        | BuildCommand of Command
-        | BuildArg of Command * CommandArg
-
+    /// Represents operator types
     type OperatorType =
         | Start
         | Pipe
@@ -66,34 +78,29 @@ module Interpreter =
         | StdOutRedirect
         | StdErrRedirect
 
+    /// A block consisting of a command and operator
     type Block =
         { Command: Command
           Operator: OperatorType }
 
+    /// Represents the command builder state.
     type BuildCommandState =
         | SetName
         | BuildArg of CommandArg
-
-    let removeQuotes (str: string) =
-        match (str.StartsWith('"') || str.StartsWith(''')), (str.EndsWith('"') || str.EndsWith(''')) with
-        | true, true -> str.[1..(str.Length - 2)]
-        | true, false -> str.[1..]
-        | false, true -> str.[0..-1] // This shouldn't be hit.
-        | false, false -> str
     
-    
+    /// Build a command from a list of tokens.
     let buildCommand (tokens: Token list) =
         tokens
         |> List.fold
             (fun (cmd: Command, state) t ->
                 match state, t.Type with
                 | SetName, TokenType.Command
-                | SetName, TokenType.DelimitedString -> (cmd.SetName(t.Value |> removeQuotes), BuildArg(CommandArg.Blank()))
+                | SetName, TokenType.DelimitedString -> (cmd.SetName(t.Value.RemoveQuotes()), BuildArg(CommandArg.Blank()))
                 | SetName, _ -> failwith $"Incorrect token type: {t.Type}"
                 | BuildArg arg, TokenType.ArgName -> (cmd, BuildArg(arg.SetName(t.Value)))
                 | BuildArg arg, TokenType.ArgValue
                 | BuildArg arg, TokenType.DelimitedString ->
-                    (cmd.AddArg(arg.SetValue(t.Value |> removeQuotes)), BuildArg(CommandArg.Blank()))
+                    (cmd.AddArg(arg.SetValue(t.Value.RemoveQuotes())), BuildArg(CommandArg.Blank()))
                 | BuildArg _, _ -> failwith $"Incorrect token type for arg: {t.Type}")
             (Command.Blank(), SetName)
         |> fun (cmd, state) ->
@@ -102,6 +109,7 @@ module Interpreter =
             | BuildArg arg when arg.IsEmpty() -> cmd
             | BuildArg arg -> cmd.AddArg(arg)
 
+    /// Create an OperatorType from a string.
     let handleOperator (value: string) =
         match value with
         | "|>" -> FSharpPipe
@@ -111,6 +119,7 @@ module Interpreter =
         | ">&2" -> StdOutRedirect
         | _ -> failwith $"Unknown operator `{value}`."
 
+    /// Split a list of tokens into blocks.
     let split (tokens: Token list) =
         tokens
         |> List.fold
@@ -130,11 +139,13 @@ module Interpreter =
             @ [ { Command = buildCommand cur
                   Operator = op } ]
     
+    /// Turn an Option<'T> into a Result<'U, string> with a mapping function and error message. 
     let optionToResult<'T, 'U> (errorMessage: string) (fn: 'T -> 'U) (value: Option<'T>) =
         match value with
         | Some v -> fn v |> Ok
         | None -> Error errorMessage
 
+    /// Attempt to create a step from a block.
     let createStep (block: Block) : Result<Step, string> =
 
         let binder = optionToResult "Missing arg."
@@ -170,6 +181,8 @@ module Interpreter =
         | OperatorType.StdErrRedirect -> Ok CoreUtils.toError
         | OperatorType.StdOutRedirect -> Error "TODO - implement stdout redirect"
 
+    /// Attempt to create a list of steps from a list of blocks.
+    /// If one step fails to be created an error will be returned.
     let createSteps (blocks: Block list) =
         blocks
         |> List.fold
@@ -181,4 +194,5 @@ module Interpreter =
                     | Error e -> Error e))
             (Ok [])        
             
+    /// Run the interpreter and create a list of steps to be executed.
     let run (input: string) = Parsing.run input |> split |> createSteps
